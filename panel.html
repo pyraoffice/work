@@ -60,8 +60,12 @@
 
         <div>
           <section class="bloque" id="bloque-espacios" hidden>
-            <h2>Mis espacios</h2>
-            <p class="vacio">Todavía no publicaste espacios. Pronto vas a poder cargar el primero desde acá.</p>
+            <div class="bloque-cabecera">
+              <h2>Mis espacios</h2>
+              <a class="boton boton-bronce" href="espacio.html">Publicar un espacio</a>
+            </div>
+            <div class="mensaje" id="mensaje-espacios" hidden role="status"></div>
+            <div id="lista-espacios"><p class="vacio">Cargando...</p></div>
           </section>
           <section class="bloque">
             <h2>Mis reservas</h2>
@@ -122,6 +126,37 @@
       el("es-dueno").checked = perfil.es_dueno;
       el("bloque-espacios").hidden = !perfil.es_dueno;
       el("contenido").hidden = false;
+      if (perfil.es_dueno) cargarEspacios(usuario.id);
+
+      const guardado = new URLSearchParams(location.search).get("guardado");
+      if (guardado) mostrarMensaje(el("mensaje-espacios"),
+        guardado === "publicado" ? "Tu espacio está publicado." : "Tu espacio quedó guardado sin publicar.", "ok");
+    }
+
+    async function cargarEspacios(idUsuario) {
+      const { data, error } = await db.from("espacios")
+        .select("id, titulo, estado, precio_hora, tipos_espacio(nombre), fotos_espacio(ruta, orden)")
+        .eq("dueno_id", idUsuario).order("creado_at", { ascending: false });
+      const lista = el("lista-espacios");
+      if (error) { lista.innerHTML = '<p class="vacio">No se pudieron cargar tus espacios. Recargá la página.</p>'; return; }
+      if (!data.length) { lista.innerHTML = '<p class="vacio">Todavía no publicaste espacios.</p>'; return; }
+      const nombresEstado = { publicado: "Publicado", borrador: "Sin publicar", pausado: "Pausado" };
+      lista.innerHTML = data.map(e => {
+        const portada = (e.fotos_espacio || []).sort((a, b) => a.orden - b.orden)[0];
+        const img = portada
+          ? `<img src="${db.storage.from("fotos-espacios").getPublicUrl(portada.ruta).data.publicUrl}" alt="">`
+          : '<div class="sin-foto">Sin foto</div>';
+        const titulo = document.createElement("span"); titulo.textContent = e.titulo;
+        return `<article class="item-espacio">
+          ${img}
+          <div>
+            <h3>${titulo.innerHTML}</h3>
+            <p>${e.tipos_espacio ? e.tipos_espacio.nombre : ""} · $${Number(e.precio_hora).toLocaleString("es-AR")} por hora</p>
+            <span class="etiqueta etiqueta-${e.estado}">${nombresEstado[e.estado] || e.estado}</span>
+          </div>
+          <a class="boton" href="espacio.html?id=${e.id}">Editar</a>
+        </article>`;
+      }).join("");
     }
 
     el("form-datos").addEventListener("submit", async (evento) => {

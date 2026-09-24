@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mi espacio · Pyra</title>
+  <link rel="icon" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="theme-color" content="#171412">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="pyra.css">
+</head>
+<body>
+  <header class="encabezado">
+    <div class="contenedor">
+      <a class="marca" href="index.html"><img src="pyra-logo.svg" alt="Pyra"></a>
+      <nav class="nav" data-nav aria-label="Principal"></nav>
+    </div>
+  </header>
+
+  <main class="contenedor panel formulario-espacio">
+    <p class="volver"><a href="panel.html">Volver a mi panel</a></p>
+    <h1 id="titulo-pagina">Publicar un espacio</h1>
+    <div class="mensaje" id="mensaje" hidden role="alert"></div>
+
+    <form id="form-espacio" novalidate hidden>
+      <section class="bloque">
+        <h2>Datos principales</h2>
+        <div class="campo">
+          <label for="titulo">Nombre del espacio</label>
+          <input id="titulo" maxlength="80" placeholder="Ej.: Sala de reuniones en microcentro">
+        </div>
+        <div class="fila-2">
+          <div class="campo">
+            <label for="tipo">Tipo de espacio</label>
+            <select id="tipo"></select>
+          </div>
+          <div class="campo">
+            <label for="capacidad">Capacidad (personas)</label>
+            <input id="capacidad" type="number" min="1" max="500" inputmode="numeric">
+          </div>
+        </div>
+        <div class="campo">
+          <label for="descripcion">Descripción</label>
+          <textarea id="descripcion" rows="5" maxlength="2000" placeholder="Contá cómo es el espacio, qué lo hace cómodo y para qué sirve."></textarea>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <h2>Ubicación</h2>
+        <div class="campo">
+          <label for="direccion">Dirección</label>
+          <input id="direccion" maxlength="120" placeholder="Calle, número, piso y oficina">
+        </div>
+        <div class="fila-2">
+          <div class="campo">
+            <label for="ciudad">Ciudad</label>
+            <input id="ciudad" value="Salta">
+          </div>
+          <div class="campo">
+            <label for="provincia">Provincia</label>
+            <input id="provincia" value="Salta">
+          </div>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <h2>Precio y reglas</h2>
+        <div class="fila-2">
+          <div class="campo">
+            <label for="precio">Precio por hora (pesos)</label>
+            <input id="precio" type="number" min="1" step="1" inputmode="numeric">
+            <small id="precio-neto"></small>
+          </div>
+          <div class="campo">
+            <label for="margen">Tiempo libre entre reservas</label>
+            <select id="margen">
+              <option value="0">Sin margen</option>
+              <option value="15">15 minutos</option>
+              <option value="30">30 minutos</option>
+              <option value="60">1 hora</option>
+            </select>
+          </div>
+        </div>
+        <div class="campo">
+          <label for="reglas">Reglas de uso</label>
+          <textarea id="reglas" rows="3" maxlength="1000" placeholder="Ej.: No se permite fumar. Dejar la sala ordenada."></textarea>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <h2>Servicios incluidos</h2>
+        <div class="opciones" id="servicios"></div>
+      </section>
+
+      <section class="bloque">
+        <h2>Horarios disponibles</h2>
+        <p class="ayuda">Marcá los días y el horario en que se puede reservar tu espacio.</p>
+        <div class="horarios" id="horarios"></div>
+      </section>
+
+      <section class="bloque">
+        <h2>Fotos</h2>
+        <p class="ayuda">Entre 1 y 8 fotos. La primera es la portada. Se achican solas para que carguen rápido.</p>
+        <div class="fotos" id="fotos"></div>
+        <label class="boton" for="input-fotos">Agregar fotos</label>
+        <input id="input-fotos" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+      </section>
+
+      <div class="acciones-form">
+        <button class="boton" type="button" id="guardar-borrador">Guardar sin publicar</button>
+        <button class="boton boton-bronce" type="button" id="publicar">Publicar espacio</button>
+      </div>
+      <p class="ayuda" id="estado-actual"></p>
+    </form>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    const el = (id) => document.getElementById(id);
+    const espacioId = new URLSearchParams(location.search).get("id");
+    const MAX_FOTOS = 8;
+    const SERVICIOS = ["Wifi", "Aire acondicionado", "Calefacción", "Café o agua", "Proyector o TV",
+      "Pizarra", "Estacionamiento", "Cocina", "Impresora", "Recepción", "Acceso para silla de ruedas"];
+    const DIAS = [[1, "Lunes"], [2, "Martes"], [3, "Miércoles"], [4, "Jueves"], [5, "Viernes"], [6, "Sábado"], [0, "Domingo"]];
+
+    let usuario = null;
+    let comision = 10;
+    let fotos = [];          // { id?, ruta?, url, archivo? }
+    let fotosBorradas = [];  // fotos existentes que se quitaron
+
+    function pintarServicios(elegidos) {
+      el("servicios").innerHTML = SERVICIOS.map((s, i) =>
+        `<label class="casilla"><input type="checkbox" value="${s}" id="serv-${i}" ${elegidos.includes(s) ? "checked" : ""}><span>${s}</span></label>`
+      ).join("");
+    }
+
+    function pintarHorarios(filas) {
+      el("horarios").innerHTML = DIAS.map(([n, nombre]) => {
+        const f = filas.find(x => x.dia_semana === n);
+        const activo = filas.length ? !!f : n >= 1 && n <= 5;
+        const desde = f ? f.hora_inicio.slice(0, 5) : "09:00";
+        const hasta = f ? f.hora_fin.slice(0, 5) : "18:00";
+        return `<div class="horario" data-dia="${n}">
+          <label class="casilla"><input type="checkbox" ${activo ? "checked" : ""}><span>${nombre}</span></label>
+          <input type="time" aria-label="${nombre} desde" value="${desde}" step="1800">
+          <span>a</span>
+          <input type="time" aria-label="${nombre} hasta" value="${hasta}" step="1800">
+        </div>`;
+      }).join("");
+    }
+
+    function pintarFotos() {
+      el("fotos").innerHTML = fotos.map((f, i) => `
+        <figure class="foto">
+          <img src="${f.url}" alt="Foto ${i + 1}">
+          ${i === 0 ? '<figcaption>Portada</figcaption>' : ""}
+          <div class="foto-acciones">
+            ${i > 0 ? `<button type="button" class="enlace" data-portada="${i}">Usar de portada</button>` : ""}
+            <button type="button" class="enlace" data-quitar="${i}">Quitar</button>
+          </div>
+        </figure>`).join("");
+      el("fotos").querySelectorAll("[data-quitar]").forEach(b => b.addEventListener("click", () => {
+        const [f] = fotos.splice(+b.dataset.quitar, 1);
+        if (f.id) fotosBorradas.push(f);
+        pintarFotos();
+      }));
+      el("fotos").querySelectorAll("[data-portada]").forEach(b => b.addEventListener("click", () => {
+        const [f] = fotos.splice(+b.dataset.portada, 1);
+        fotos.unshift(f);
+        pintarFotos();
+      }));
+    }
+
+    function mostrarNeto() {
+      const p = parseFloat(el("precio").value);
+      el("precio-neto").textContent = p > 0
+        ? "Vos recibís $" + Math.round(p * (100 - comision) / 100).toLocaleString("es-AR") + " por hora (Pyra retiene el " + comision + "%)."
+        : "";
+    }
+
+    // Achica la foto a 1600 px de lado mayor y la convierte a JPG
+    function achicarFoto(archivo) {
+      return new Promise((resolver, rechazar) => {
+        const img = new Image();
+        img.onload = () => {
+          const escala = Math.min(1, 1600 / Math.max(img.width, img.height));
+          const c = document.createElement("canvas");
+          c.width = Math.round(img.width * escala);
+          c.height = Math.round(img.height * escala);
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          c.toBlob(b => b ? resolver(b) : rechazar(new Error("foto")), "image/jpeg", 0.82);
+          URL.revokeObjectURL(img.src);
+        };
+        img.onerror = () => rechazar(new Error("No se pudo leer una de las fotos."));
+        img.src = URL.createObjectURL(archivo);
+      });
+    }
+
+    el("input-fotos").addEventListener("change", (e) => {
+      const nuevos = [...e.target.files].slice(0, MAX_FOTOS - fotos.length);
+      if (e.target.files.length > nuevos.length) mostrarMensaje(el("mensaje"), "Se pueden cargar hasta " + MAX_FOTOS + " fotos.");
+      nuevos.forEach(a => fotos.push({ archivo: a, url: URL.createObjectURL(a) }));
+      e.target.value = "";
+      pintarFotos();
+    });
+
+    function leerHorarios() {
+      const filas = [];
+      for (const div of el("horarios").querySelectorAll(".horario")) {
+        const [check, desde, hasta] = div.querySelectorAll("input");
+        if (!check.checked) continue;
+        if (!desde.value || !hasta.value || hasta.value <= desde.value) {
+          throw new Error("Revisá los horarios: en cada día marcado, la hora de cierre tiene que ser posterior a la de apertura.");
+        }
+        filas.push({ dia_semana: +div.dataset.dia, hora_inicio: desde.value, hora_fin: hasta.value });
+      }
+      return filas;
+    }
+
+    function leerFormulario(publicar) {
+      const datos = {
+        titulo: el("titulo").value.trim(),
+        tipo_id: el("tipo").value,
+        capacidad: parseInt(el("capacidad").value, 10),
+        descripcion: el("descripcion").value.trim() || null,
+        direccion: el("direccion").value.trim(),
+        ciudad: el("ciudad").value.trim() || "Salta",
+        provincia: el("provincia").value.trim() || "Salta",
+        precio_hora: parseFloat(el("precio").value),
+        margen_minutos: parseInt(el("margen").value, 10),
+        reglas: el("reglas").value.trim() || null,
+        servicios: [...el("servicios").querySelectorAll("input:checked")].map(i => i.value),
+        estado: publicar ? "publicado" : "borrador"
+      };
+      if (datos.titulo.length < 5) throw new Error("Escribí un nombre para el espacio de al menos 5 caracteres.");
+      if (!datos.direccion) throw new Error("Escribí la dirección del espacio.");
+      if (!(datos.capacidad > 0)) throw new Error("Indicá para cuántas personas es el espacio.");
+      if (!(datos.precio_hora > 0)) throw new Error("Indicá el precio por hora.");
+      const horarios = leerHorarios();
+      if (publicar && !horarios.length) throw new Error("Para publicar, marcá al menos un día con horario disponible.");
+      if (publicar && !fotos.length) throw new Error("Para publicar, agregá al menos una foto.");
+      if (publicar && (datos.descripcion || "").length < 30) throw new Error("Para publicar, escribí una descripción de al menos 30 caracteres.");
+      return { datos, horarios };
+    }
+
+    async function guardar(publicar) {
+      mostrarMensaje(el("mensaje"), "");
+      let leido;
+      try { leido = leerFormulario(publicar); }
+      catch (e) { mostrarMensaje(el("mensaje"), e.message); window.scrollTo(0, 0); return; }
+
+      const botones = [el("guardar-borrador"), el("publicar")];
+      botones.forEach(b => b.disabled = true);
+      mostrarMensaje(el("mensaje"), "Guardando...", "ok");
+
+      try {
+        // 1. Datos del espacio
+        let id = espacioId;
+        if (id) {
+          const { error } = await db.from("espacios").update(leido.datos).eq("id", id);
+          if (error) throw error;
+        } else {
+          const { data, error } = await db.from("espacios")
+            .insert({ ...leido.datos, dueno_id: usuario.id }).select("id").single();
+          if (error) throw error;
+          id = data.id;
+        }
+
+        // 2. Horarios: se reemplazan completos
+        let r = await db.from("disponibilidad").delete().eq("espacio_id", id);
+        if (r.error) throw r.error;
+        if (leido.horarios.length) {
+          r = await db.from("disponibilidad").insert(leido.horarios.map(h => ({ ...h, espacio_id: id })));
+          if (r.error) throw r.error;
+        }
+
+        // 3. Fotos quitadas
+        for (const f of fotosBorradas) {
+          await db.from("fotos_espacio").delete().eq("id", f.id);
+          await db.storage.from("fotos-espacios").remove([f.ruta]);
+        }
+        fotosBorradas = [];
+
+        // 4. Fotos nuevas y orden
+        for (let i = 0; i < fotos.length; i++) {
+          const f = fotos[i];
+          if (f.archivo) {
+            const blob = await achicarFoto(f.archivo);
+            const ruta = `${usuario.id}/${id}/${Date.now()}-${i}.jpg`;
+            const sub = await db.storage.from("fotos-espacios").upload(ruta, blob, { contentType: "image/jpeg" });
+            if (sub.error) throw sub.error;
+            const ins = await db.from("fotos_espacio").insert({ espacio_id: id, ruta, orden: i }).select("id").single();
+            if (ins.error) throw ins.error;
+            Object.assign(f, { id: ins.data.id, ruta, archivo: null });
+          } else {
+            await db.from("fotos_espacio").update({ orden: i }).eq("id", f.id);
+          }
+        }
+
+        location.href = "panel.html?guardado=" + (publicar ? "publicado" : "borrador");
+      } catch (error) {
+        mostrarMensaje(el("mensaje"), traducirError(error));
+        window.scrollTo(0, 0);
+        botones.forEach(b => b.disabled = false);
+      }
+    }
+
+    el("guardar-borrador").addEventListener("click", () => guardar(false));
+    el("publicar").addEventListener("click", () => guardar(true));
+    el("precio").addEventListener("input", mostrarNeto);
+
+    async function iniciar() {
+      usuario = await usuarioActual();
+      if (!usuario) { location.href = "ingresar.html"; return; }
+
+      const [tipos, config] = await Promise.all([
+        db.from("tipos_espacio").select("id, nombre").order("nombre"),
+        db.from("configuracion").select("comision_pct").single()
+      ]);
+      if (tipos.error) { mostrarMensaje(el("mensaje"), traducirError(tipos.error)); return; }
+      el("tipo").innerHTML = tipos.data.map(t => `<option value="${t.id}">${t.nombre}</option>`).join("");
+      if (config.data) comision = +config.data.comision_pct;
+
+      if (espacioId) {
+        const { data: e, error } = await db.from("espacios")
+          .select("*, disponibilidad(*), fotos_espacio(*)").eq("id", espacioId).single();
+        if (error || e.dueno_id !== usuario.id) {
+          mostrarMensaje(el("mensaje"), "No encontramos ese espacio entre los tuyos.");
+          return;
+        }
+        el("titulo-pagina").textContent = "Editar espacio";
+        el("titulo").value = e.titulo;
+        el("tipo").value = e.tipo_id;
+        el("capacidad").value = e.capacidad;
+        el("descripcion").value = e.descripcion || "";
+        el("direccion").value = e.direccion;
+        el("ciudad").value = e.ciudad;
+        el("provincia").value = e.provincia;
+        el("precio").value = e.precio_hora;
+        el("margen").value = String(e.margen_minutos);
+        el("reglas").value = e.reglas || "";
+        pintarServicios(e.servicios || []);
+        pintarHorarios(e.disponibilidad || []);
+        fotos = (e.fotos_espacio || []).sort((a, b) => a.orden - b.orden).map(f => ({
+          id: f.id, ruta: f.ruta,
+          url: db.storage.from("fotos-espacios").getPublicUrl(f.ruta).data.publicUrl
+        }));
+        const estados = { publicado: "publicado y visible para todos", borrador: "guardado sin publicar", pausado: "pausado" };
+        el("estado-actual").textContent = "Estado actual: " + (estados[e.estado] || e.estado) + ".";
+        el("publicar").textContent = e.estado === "publicado" ? "Guardar cambios" : "Publicar espacio";
+        el("guardar-borrador").textContent = e.estado === "publicado" ? "Despublicar y guardar" : "Guardar sin publicar";
+      } else {
+        pintarServicios(["Wifi"]);
+        pintarHorarios([]);
+      }
+      pintarFotos();
+      mostrarNeto();
+      el("form-espacio").hidden = false;
+    }
+
+    iniciar();
+  </script>
+</body>
+</html>
