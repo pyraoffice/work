@@ -67,9 +67,13 @@
             <div class="mensaje" id="mensaje-espacios" hidden role="status"></div>
             <div id="lista-espacios"><p class="vacio">Cargando...</p></div>
           </section>
+          <section class="bloque" id="bloque-recibidas" hidden>
+            <h2>Reservas de mis espacios</h2>
+            <div id="lista-recibidas"></div>
+          </section>
           <section class="bloque">
             <h2>Mis reservas</h2>
-            <p class="vacio">Todavía no tenés reservas.</p>
+            <div id="lista-reservas"><p class="vacio">Cargando...</p></div>
           </section>
         </div>
       </div>
@@ -126,11 +130,46 @@
       el("es-dueno").checked = perfil.es_dueno;
       el("bloque-espacios").hidden = !perfil.es_dueno;
       el("contenido").hidden = false;
-      if (perfil.es_dueno) cargarEspacios(usuario.id);
+      if (perfil.es_dueno) { cargarEspacios(usuario.id); cargarRecibidas(); }
+      cargarReservas();
 
       const guardado = new URLSearchParams(location.search).get("guardado");
       if (guardado) mostrarMensaje(el("mensaje-espacios"),
         guardado === "publicado" ? "Tu espacio está publicado." : "Tu espacio quedó guardado sin publicar.", "ok");
+    }
+
+    const ESTADOS_RESERVA = {
+      pendiente_pago: "Esperando pago", confirmada: "Confirmada", completada: "Completada",
+      cancelada_con_reembolso: "Cancelada con reembolso", cancelada_sin_reembolso: "Cancelada sin reembolso",
+      expirada: "Vencida sin pagar"
+    };
+
+    async function cargarReservas() {
+      const { data, error } = await db.rpc("mis_reservas");
+      const lista = el("lista-reservas");
+      if (error) { lista.innerHTML = '<p class="vacio">No se pudieron cargar tus reservas. Recargá la página.</p>'; return; }
+      if (!data.length) { lista.innerHTML = '<p class="vacio">Todavía no tenés reservas. <a href="buscar.html">Buscá un espacio</a>.</p>'; return; }
+      lista.innerHTML = data.map(r => `
+        <article class="item-reserva">
+          <h3><a href="ver.html?id=${r.espacio_id}">${textoSeguro(r.titulo)}</a></h3>
+          <p>${fechaLarga(r.inicio)}, de ${hora(r.inicio)} a ${hora(r.fin)} · ${pesos(r.monto_total)}</p>
+          <span class="etiqueta etiqueta-${r.estado}">${ESTADOS_RESERVA[r.estado] || r.estado}</span>
+          ${r.direccion ? `<p class="detalle-confirmado">Dirección: ${textoSeguro(r.direccion)}, ${textoSeguro(r.ciudad)}<br>
+            Contacto: ${textoSeguro(r.dueno_nombre)}${r.dueno_telefono ? " · " + textoSeguro(r.dueno_telefono) : ""}</p>` : ""}
+        </article>`).join("");
+    }
+
+    async function cargarRecibidas() {
+      const { data, error } = await db.rpc("reservas_de_mis_espacios");
+      if (error || !data.length) return;
+      el("bloque-recibidas").hidden = false;
+      el("lista-recibidas").innerHTML = data.map(r => `
+        <article class="item-reserva">
+          <h3>${textoSeguro(r.titulo)}</h3>
+          <p>${fechaLarga(r.inicio)}, de ${hora(r.inicio)} a ${hora(r.fin)} · Recibís ${pesos(r.monto_dueno)}</p>
+          <span class="etiqueta etiqueta-${r.estado}">${ESTADOS_RESERVA[r.estado] || r.estado}</span>
+          ${r.cliente_nombre ? `<p class="detalle-confirmado">Cliente: ${textoSeguro(r.cliente_nombre)}${r.cliente_telefono ? " · " + textoSeguro(r.cliente_telefono) : ""}</p>` : ""}
+        </article>`).join("");
     }
 
     async function cargarEspacios(idUsuario) {

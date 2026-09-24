@@ -107,7 +107,8 @@
         if (modo === "ingreso") {
           const { error } = await db.auth.signInWithPassword({ email, password: clave });
           if (error) throw error;
-          location.href = "panel.html";
+          const volver = parametros.get("volver");
+          location.href = volver && /^[a-z]+[.]html([?][A-Za-z0-9_=&%-]*)?$/.test(volver) ? volver : "panel.html";
 
         } else if (modo === "registro") {
           const { data, error } = await db.auth.signUp({

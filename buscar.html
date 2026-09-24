@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Buscar espacios · Pyra</title>
+  <meta name="description" content="Oficinas, salas de reunión, escritorios y salones corporativos por hora en Salta.">
+  <link rel="icon" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="theme-color" content="#171412">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="pyra.css">
+</head>
+<body>
+  <header class="encabezado">
+    <div class="contenedor">
+      <a class="marca" href="index.html"><img src="pyra-logo.svg" alt="Pyra"></a>
+      <nav class="nav" data-nav aria-label="Principal"></nav>
+    </div>
+  </header>
+
+  <main class="contenedor panel">
+    <h1>Espacios disponibles</h1>
+
+    <form class="filtros" id="filtros">
+      <div class="campo">
+        <label for="f-tipo">Tipo de espacio</label>
+        <select id="f-tipo"><option value="">Todos</option></select>
+      </div>
+      <div class="campo">
+        <label for="f-capacidad">Personas</label>
+        <select id="f-capacidad">
+          <option value="1">Cualquier cantidad</option>
+          <option value="2">2 o más</option>
+          <option value="4">4 o más</option>
+          <option value="6">6 o más</option>
+          <option value="10">10 o más</option>
+          <option value="20">20 o más</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="f-orden">Ordenar por</label>
+        <select id="f-orden">
+          <option value="recientes">Más recientes</option>
+          <option value="precio-asc">Menor precio</option>
+          <option value="precio-desc">Mayor precio</option>
+        </select>
+      </div>
+    </form>
+
+    <p class="ayuda" id="resumen" aria-live="polite"></p>
+    <div class="resultados" id="resultados"></div>
+  </main>
+
+  <footer class="pie">
+    <div class="contenedor">Pyra, Salta, Argentina.</div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    const el = (id) => document.getElementById(id);
+    const parametros = new URLSearchParams(location.search);
+
+    async function cargarTipos() {
+      const { data } = await db.from("tipos_espacio").select("id, nombre").order("nombre");
+      (data || []).forEach(t => el("f-tipo").insertAdjacentHTML("beforeend", `<option value="${t.id}">${textoSeguro(t.nombre)}</option>`));
+      if (parametros.get("tipo")) el("f-tipo").value = parametros.get("tipo");
+    }
+
+    async function buscar() {
+      el("resultados").innerHTML = '<p class="vacio">Buscando...</p>';
+      let consulta = db.from("espacios_publicos").select("*").gte("capacidad", +el("f-capacidad").value);
+      if (el("f-tipo").value) consulta = consulta.eq("tipo_id", el("f-tipo").value);
+      const orden = el("f-orden").value;
+      consulta = orden === "recientes"
+        ? consulta.order("creado_at", { ascending: false })
+        : consulta.order("precio_hora", { ascending: orden === "precio-asc" });
+
+      const { data, error } = await consulta;
+      if (error) {
+        el("resumen").textContent = "";
+        el("resultados").innerHTML = `<p class="vacio">${textoSeguro(traducirError(error))}</p>`;
+        return;
+      }
+      el("resumen").textContent = data.length === 1 ? "1 espacio encontrado." : data.length + " espacios encontrados.";
+      if (!data.length) {
+        el("resultados").innerHTML = '<p class="vacio">No hay espacios con esos filtros. Probá con otro tipo o menos personas.</p>';
+        return;
+      }
+      el("resultados").innerHTML = data.map(e => `
+        <a class="tarjeta" href="ver.html?id=${e.id}">
+          ${e.portada ? `<img src="${urlFoto(e.portada)}" alt="" loading="lazy">` : '<div class="sin-foto">Sin foto</div>'}
+          <div class="tarjeta-texto">
+            <p class="tarjeta-tipo">${textoSeguro(e.tipo_nombre)} · hasta ${e.capacidad} personas</p>
+            <h2>${textoSeguro(e.titulo)}</h2>
+            <p>${textoSeguro(e.ciudad)}${e.cantidad_resenas > 0 ? ` · ${e.puntaje} de 5 (${e.cantidad_resenas})` : ""}</p>
+            <p class="tarjeta-precio"><strong>${pesos(e.precio_hora)}</strong> por hora</p>
+          </div>
+        </a>`).join("");
+    }
+
+    ["f-tipo", "f-capacidad", "f-orden"].forEach(id => el(id).addEventListener("change", buscar));
+    cargarTipos().then(buscar);
+  </script>
+</body>
+</html>

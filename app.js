@@ -11,13 +11,13 @@ async function pintarNav() {
   if (!nav) return;
   const usuario = await usuarioActual();
   if (usuario) {
-    nav.innerHTML = '<a href="panel.html">Mi panel</a><button type="button" class="enlace" data-salir>Salir</button>';
+    nav.innerHTML = '<a href="buscar.html">Buscar espacios</a><a href="panel.html">Mi panel</a><button type="button" class="enlace" data-salir>Salir</button>';
     nav.querySelector("[data-salir]").addEventListener("click", async () => {
       await db.auth.signOut();
       location.href = "index.html";
     });
   } else {
-    nav.innerHTML = '<a href="ingresar.html">Ingresar</a><a class="boton boton-bronce" href="ingresar.html?modo=registro">Crear cuenta</a>';
+    nav.innerHTML = '<a href="buscar.html">Buscar espacios</a><a href="ingresar.html">Ingresar</a><a class="boton boton-bronce" href="ingresar.html?modo=registro">Crear cuenta</a>';
   }
 }
 
@@ -28,7 +28,9 @@ function mostrarMensaje(el, texto, tipo) {
 }
 
 function traducirError(error) {
-  const m = (error && error.message || "").toLowerCase();
+  const original = (error && error.message) || "";
+  if (original.startsWith("PYRA: ")) return original.slice(6);
+  const m = original.toLowerCase();
   if (m.includes("invalid login")) return "El mail o la contraseña no coinciden.";
   if (m.includes("already registered")) return "Ya existe una cuenta con ese mail. Ingresá con tu contraseña.";
   if (m.includes("not confirmed")) return "Todavía no confirmaste tu mail. Revisá tu bandeja de entrada y tocá el enlace de activación.";
@@ -37,6 +39,26 @@ function traducirError(error) {
   if (m.includes("not authorized")) return "Este mail todavía no puede recibir mensajes de Pyra (restricción del servidor de envío de prueba).";
   console.error("Error de Supabase:", error);
   return "No se pudo completar la operación. Detalle técnico: " + ((error && (error.message || error.code)) || "sin detalle");
+}
+
+// Utilidades de formato
+const ZONA = "America/Argentina/Salta";
+function urlFoto(ruta) {
+  return ruta ? db.storage.from("fotos-espacios").getPublicUrl(ruta).data.publicUrl : "";
+}
+function pesos(n) {
+  return "$" + Math.round(Number(n)).toLocaleString("es-AR");
+}
+function fechaLarga(iso) {
+  return new Date(iso).toLocaleDateString("es-AR", { timeZone: ZONA, weekday: "long", day: "numeric", month: "long" });
+}
+function hora(iso) {
+  return new Date(iso).toLocaleTimeString("es-AR", { timeZone: ZONA, hour: "2-digit", minute: "2-digit", hour12: false });
+}
+function textoSeguro(t) {
+  const s = document.createElement("span");
+  s.textContent = t == null ? "" : String(t);
+  return s.innerHTML;
 }
 
 document.addEventListener("DOMContentLoaded", pintarNav);

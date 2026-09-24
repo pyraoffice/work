@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Espacio · Pyra</title>
+  <link rel="icon" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="theme-color" content="#171412">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="pyra.css">
+</head>
+<body>
+  <header class="encabezado">
+    <div class="contenedor">
+      <a class="marca" href="index.html"><img src="pyra-logo.svg" alt="Pyra"></a>
+      <nav class="nav" data-nav aria-label="Principal"></nav>
+    </div>
+  </header>
+
+  <main class="contenedor panel">
+    <p class="volver"><a href="buscar.html">Volver a la búsqueda</a></p>
+    <div class="mensaje" id="mensaje-general" hidden role="alert"></div>
+
+    <div id="ficha" hidden>
+      <p class="tarjeta-tipo" id="tipo"></p>
+      <h1 id="titulo"></h1>
+
+      <div class="galeria">
+        <img id="foto-principal" alt="">
+        <div class="miniaturas" id="miniaturas"></div>
+      </div>
+
+      <div class="ficha-grilla">
+        <div>
+          <section class="bloque">
+            <h2>Sobre el espacio</h2>
+            <p class="texto-largo" id="descripcion"></p>
+            <p class="ayuda" id="ubicacion"></p>
+          </section>
+          <section class="bloque">
+            <h2>Servicios incluidos</h2>
+            <ul class="lista-servicios" id="servicios"></ul>
+          </section>
+          <section class="bloque" id="bloque-reglas" hidden>
+            <h2>Reglas de uso</h2>
+            <p class="texto-largo" id="reglas"></p>
+          </section>
+          <section class="bloque">
+            <h2>Horarios habituales</h2>
+            <dl class="tabla-horarios" id="horarios"></dl>
+          </section>
+          <section class="bloque">
+            <h2>Condiciones de reserva</h2>
+            <p id="condiciones"></p>
+          </section>
+        </div>
+
+        <aside class="bloque reserva" aria-labelledby="titulo-reserva">
+          <p class="precio-grande"><strong id="precio"></strong> por hora</p>
+          <h2 id="titulo-reserva">Reservar</h2>
+          <div class="mensaje" id="mensaje" hidden role="alert"></div>
+
+          <div id="formulario-reserva">
+            <div class="campo">
+              <label for="fecha">Día</label>
+              <input id="fecha" type="date">
+            </div>
+            <div class="campo">
+              <label for="inicio">Desde</label>
+              <select id="inicio" disabled><option>Elegí un día</option></select>
+            </div>
+            <div class="campo">
+              <label for="duracion">Duración</label>
+              <select id="duracion" disabled><option>Elegí la hora de inicio</option></select>
+            </div>
+            <p class="ayuda" id="ocupados"></p>
+            <div class="total" id="total" hidden></div>
+            <button class="boton boton-bronce ancho" id="reservar" type="button" disabled>Reservar</button>
+          </div>
+
+          <div id="reserva-hecha" hidden>
+            <p id="texto-reserva-hecha"></p>
+            <a class="boton ancho centrado" href="panel.html">Ver mis reservas</a>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <footer class="pie">
+    <div class="contenedor">Pyra, Salta, Argentina.</div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    const el = (id) => document.getElementById(id);
+    const espacioId = new URLSearchParams(location.search).get("id");
+    const NOMBRES_DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+    const ORDEN_DIAS = [1, 2, 3, 4, 5, 6, 0];
+    const MEDIA_HORA = 30 * 60 * 1000;
+
+    let espacio = null;
+    let disponibilidad = [];
+    let ocupados = [];     // [{ inicio: Date, fin: Date }]
+    let ventanas = [];     // [{ desde: Date, hasta: Date }] del día elegido
+
+    const aMinutos = (t) => { const [h, m] = t.split(":"); return +h * 60 + +m; };
+    const deMinutos = (n) => String(Math.floor(n / 60)).padStart(2, "0") + ":" + String(n % 60).padStart(2, "0");
+    const fechaLocal = (fecha, hhmm) => new Date(`${fecha}T${hhmm}:00-03:00`);
+    const textoHoras = (h) => (h % 1 ? h.toLocaleString("es-AR") : h) + (h === 1 ? " hora" : " horas");
+
+    function hoyLocal(desplazamientoDias) {
+      const d = new Date(Date.now() + desplazamientoDias * 86400000);
+      return d.toLocaleDateString("en-CA", { timeZone: ZONA }); // formato AAAA-MM-DD
+    }
+
+    function margen() { return espacio.margen_minutos * 60000; }
+
+    function hayConflicto(inicio, fin) {
+      const finConMargen = new Date(fin.getTime() + margen());
+      return ocupados.some(o => inicio < o.fin && finConMargen > o.inicio);
+    }
+
+    function inicioValido(inicio) {
+      return inicio.getTime() >= Date.now() + espacio.anticipacion_horas * 3600000;
+    }
+
+    function duracionesPosibles(inicio) {
+      const ventana = ventanas.find(v => inicio >= v.desde && inicio < v.hasta);
+      if (!ventana) return [];
+      const lista = [];
+      for (let h = +espacio.horas_minimas; ; h += 0.5) {
+        const fin = new Date(inicio.getTime() + h * 3600000);
+        if (fin > ventana.hasta || hayConflicto(inicio, fin)) break;
+        lista.push(h);
+      }
+      return lista;
+    }
+
+    async function elegirDia() {
+      const fecha = el("fecha").value;
+      el("inicio").disabled = el("duracion").disabled = el("reservar").disabled = true;
+      el("total").hidden = true;
+      el("ocupados").textContent = "";
+      mostrarMensaje(el("mensaje"), "");
+      if (!fecha) return;
+
+      const dia = fechaLocal(fecha, "12:00").getUTCDay();
+      ventanas = disponibilidad.filter(d => d.dia_semana === dia).map(d => ({
+        desde: fechaLocal(fecha, d.hora_inicio.slice(0, 5)),
+        hasta: fechaLocal(fecha, d.hora_fin.slice(0, 5))
+      }));
+      if (!ventanas.length) {
+        el("inicio").innerHTML = "<option>Sin horarios ese día</option>";
+        el("ocupados").textContent = "El espacio no atiende los " + NOMBRES_DIAS[dia].toLowerCase() + ". Elegí otro día.";
+        return;
+      }
+
+      const desde = fechaLocal(fecha, "00:00");
+      const hasta = new Date(desde.getTime() + 86400000);
+      const { data, error } = await db.rpc("horarios_ocupados", {
+        p_espacio: espacioId, p_desde: desde.toISOString(), p_hasta: hasta.toISOString()
+      });
+      if (error) { mostrarMensaje(el("mensaje"), traducirError(error)); return; }
+      ocupados = (data || []).map(o => ({ inicio: new Date(o.inicio), fin: new Date(o.fin) }));
+      if (ocupados.length) {
+        el("ocupados").textContent = "Ocupado ese día: " + ocupados.map(o => hora(o.inicio) + " a " + hora(o.fin)).join(", ") + ".";
+      }
+
+      const opciones = [];
+      for (const v of ventanas) {
+        for (let t = v.desde.getTime(); t < v.hasta.getTime(); t += MEDIA_HORA) {
+          const inicio = new Date(t);
+          if (inicioValido(inicio) && duracionesPosibles(inicio).length) opciones.push(inicio);
+        }
+      }
+      if (!opciones.length) {
+        el("inicio").innerHTML = "<option>No quedan horarios libres</option>";
+        if (!el("ocupados").textContent) el("ocupados").textContent = "Recordá que se reserva con al menos " + espacio.anticipacion_horas + " horas de anticipación.";
+        return;
+      }
+      el("inicio").innerHTML = '<option value="">Elegí la hora</option>' +
+        opciones.map(o => `<option value="${o.toISOString()}">${hora(o)}</option>`).join("");
+      el("inicio").disabled = false;
+      el("duracion").innerHTML = "<option>Elegí la hora de inicio</option>";
+    }
+
+    function elegirInicio() {
+      el("reservar").disabled = true;
+      el("total").hidden = true;
+      if (!el("inicio").value) { el("duracion").disabled = true; return; }
+      const inicio = new Date(el("inicio").value);
+      const lista = duracionesPosibles(inicio);
+      el("duracion").innerHTML = lista.map(h => {
+        const fin = new Date(inicio.getTime() + h * 3600000);
+        return `<option value="${h}">${textoHoras(h)} (hasta las ${hora(fin)})</option>`;
+      }).join("");
+      el("duracion").disabled = false;
+      calcularTotal();
+    }
+
+    function calcularTotal() {
+      const h = parseFloat(el("duracion").value);
+      if (!h) return;
+      el("total").innerHTML = `<span>${textoHoras(h)} × ${pesos(espacio.precio_hora)}</span><strong>${pesos(h * espacio.precio_hora)}</strong>`;
+      const inicio = new Date(el("inicio").value);
+      const sinReembolso = inicio.getTime() < Date.now() + espacio.cancelacion_horas * 3600000;
+      if (sinReembolso) el("total").insertAdjacentHTML("beforeend",
+        '<p class="aviso-reembolso">Como falta menos de ' + espacio.cancelacion_horas + ' horas, esta reserva no es reembolsable.</p>');
+      el("total").hidden = false;
+      el("reservar").disabled = false;
+    }
+
+    async function reservar() {
+      const usuario = await usuarioActual();
+      if (!usuario) {
+        location.href = "ingresar.html?volver=" + encodeURIComponent("ver.html?id=" + espacioId);
+        return;
+      }
+      const inicio = new Date(el("inicio").value);
+      const fin = new Date(inicio.getTime() + parseFloat(el("duracion").value) * 3600000);
+      el("reservar").disabled = true;
+      const { error } = await db.rpc("crear_reserva", {
+        p_espacio: espacioId, p_inicio: inicio.toISOString(), p_fin: fin.toISOString()
+      });
+      if (error) {
+        mostrarMensaje(el("mensaje"), traducirError(error));
+        el("reservar").disabled = false;
+        elegirDia();
+        return;
+      }
+      el("formulario-reserva").hidden = true;
+      el("texto-reserva-hecha").textContent =
+        "Tu horario quedó retenido: " + fechaLarga(inicio) + ", de " + hora(inicio) + " a " + hora(fin) +
+        ". Para confirmarlo hay que completar el pago en los próximos 15 minutos.";
+      el("reserva-hecha").hidden = false;
+    }
+
+    async function iniciar() {
+      if (!espacioId) { mostrarMensaje(el("mensaje-general"), "No encontramos ese espacio."); return; }
+      const [e, fotos, disp] = await Promise.all([
+        db.from("espacios_publicos").select("*").eq("id", espacioId).maybeSingle(),
+        db.from("fotos_espacio").select("ruta, orden").eq("espacio_id", espacioId).order("orden"),
+        db.from("disponibilidad").select("dia_semana, hora_inicio, hora_fin").eq("espacio_id", espacioId)
+      ]);
+      if (e.error || !e.data) {
+        mostrarMensaje(el("mensaje-general"), "Este espacio no existe o ya no está publicado.");
+        return;
+      }
+      espacio = e.data;
+      disponibilidad = disp.data || [];
+      document.title = espacio.titulo + " · Pyra";
+
+      el("tipo").textContent = espacio.tipo_nombre + " · hasta " + espacio.capacidad + " personas";
+      el("titulo").textContent = espacio.titulo;
+      el("descripcion").textContent = espacio.descripcion || "";
+      el("ubicacion").textContent = espacio.ciudad + ", " + espacio.provincia +
+        ". La dirección exacta te llega con la confirmación de la reserva.";
+      el("servicios").innerHTML = (espacio.servicios || []).map(s => `<li>${textoSeguro(s)}</li>`).join("") || "<li>Sin servicios cargados</li>";
+      if (espacio.reglas) { el("reglas").textContent = espacio.reglas; el("bloque-reglas").hidden = false; }
+      el("precio").textContent = pesos(espacio.precio_hora);
+      el("condiciones").textContent =
+        "Reserva mínima de " + textoHoras(+espacio.horas_minimas) +
+        ", con al menos " + espacio.anticipacion_horas + " horas de anticipación. " +
+        "Si cancelás con " + espacio.cancelacion_horas + " horas o más de anticipación, se te devuelve el total. " +
+        "Después de ese plazo, la reserva no es reembolsable.";
+
+      el("horarios").innerHTML = ORDEN_DIAS.map(n => {
+        const filas = disponibilidad.filter(d => d.dia_semana === n);
+        const texto = filas.length ? filas.map(f => f.hora_inicio.slice(0, 5) + " a " + f.hora_fin.slice(0, 5)).join(", ") : "Cerrado";
+        return `<div><dt>${NOMBRES_DIAS[n]}</dt><dd>${texto}</dd></div>`;
+      }).join("");
+
+      const listaFotos = (fotos.data || []).map(f => urlFoto(f.ruta));
+      if (listaFotos.length) {
+        el("foto-principal").src = listaFotos[0];
+        el("miniaturas").innerHTML = listaFotos.length > 1 ? listaFotos.map((u, i) =>
+          `<button type="button" data-foto="${i}" aria-label="Ver foto ${i + 1}"><img src="${u}" alt=""></button>`).join("") : "";
+        el("miniaturas").querySelectorAll("[data-foto]").forEach(b =>
+          b.addEventListener("click", () => { el("foto-principal").src = listaFotos[+b.dataset.foto]; }));
+      } else {
+        el("foto-principal").hidden = true;
+      }
+
+      el("fecha").min = hoyLocal(0);
+      el("fecha").max = hoyLocal(90);
+      el("fecha").addEventListener("change", elegirDia);
+      el("inicio").addEventListener("change", elegirInicio);
+      el("duracion").addEventListener("change", calcularTotal);
+      el("reservar").addEventListener("click", reservar);
+      el("ficha").hidden = false;
+    }
+
+    iniciar();
+  </script>
+</body>
+</html>

@@ -152,3 +152,52 @@ select:focus, textarea:focus { border-color: var(--bronce); outline: 2px solid v
   .item-espacio .boton { grid-column: 1 / -1; text-align: center; }
   .acciones-form .boton { flex: 1; }
 }
+
+/* Etapa 4: búsqueda, ficha y reservas */
+.nav { gap: 1.1rem; }
+.filtros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; background: #fff; border: 1px solid #d3cec7; padding: 1.2rem 1.4rem .2rem; margin-bottom: 1.2rem; }
+.resultados { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.5rem; }
+.tarjeta { display: block; background: #fff; border: 1px solid #d3cec7; text-decoration: none; transition: border-color .15s; }
+.tarjeta:hover { border-color: var(--bronce); }
+.tarjeta img, .tarjeta .sin-foto { width: 100%; height: 190px; object-fit: cover; display: block; }
+.tarjeta .sin-foto { display: grid; }
+.tarjeta-texto { padding: 1rem 1.1rem 1.2rem; }
+.tarjeta-texto h2 { font-size: 1.15rem; margin: .2rem 0 .3rem; line-height: 1.2; }
+.tarjeta-texto p { margin: 0; color: var(--concreto-medio); font-size: .95rem; }
+.tarjeta-tipo { color: var(--bronce-hondo); font-weight: 600; font-size: .9rem; margin: 0; }
+.tarjeta-precio { margin-top: .6rem !important; color: var(--concreto-oscuro) !important; }
+.galeria { margin: 1.2rem 0 2rem; }
+.galeria > img { width: 100%; max-height: 460px; object-fit: cover; display: block; }
+.miniaturas { display: flex; gap: .6rem; margin-top: .6rem; overflow-x: auto; }
+.miniaturas button { border: 0; padding: 0; background: none; cursor: pointer; flex: 0 0 auto; }
+.miniaturas img { width: 96px; height: 68px; object-fit: cover; display: block; }
+.ficha-grilla { display: grid; grid-template-columns: 1fr 22rem; gap: 2rem; align-items: start; }
+.ficha-grilla .bloque + .bloque { margin-top: 1.2rem; }
+.texto-largo { white-space: pre-line; margin: 0 0 .8rem; }
+.lista-servicios { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: .4rem 1rem; padding-left: 1.1rem; margin: 0; }
+.tabla-horarios { margin: 0; }
+.tabla-horarios div { display: flex; justify-content: space-between; padding: .4rem 0; border-top: 1px solid #e3ddd5; }
+.tabla-horarios dd { margin: 0; color: var(--concreto-medio); }
+.reserva { position: sticky; top: 1rem; }
+.precio-grande { font-size: 1.1rem; margin: 0 0 1rem; }
+.precio-grande strong { font-size: 1.7rem; font-stretch: 112%; }
+.campo input[type="date"] { width: 100%; }
+.total { display: flex; justify-content: space-between; align-items: baseline; border-top: 2px solid var(--concreto-oscuro); padding: .8rem 0; margin-bottom: 1rem; }
+.total strong { font-size: 1.3rem; }
+.centrado { text-align: center; margin-top: 1rem; }
+.item-reserva { padding: .9rem 0; border-top: 1px solid #e3ddd5; }
+.item-reserva h3 { margin: 0; font-size: 1.05rem; }
+.item-reserva h3 a { text-decoration: none; }
+.item-reserva p { margin: .15rem 0 .4rem; color: var(--concreto-medio); font-size: .95rem; }
+.detalle-confirmado { color: var(--concreto-oscuro) !important; margin-top: .5rem !important; }
+.etiqueta-confirmada, .etiqueta-completada { color: var(--ok); }
+.etiqueta-pendiente_pago { color: var(--bronce-hondo); }
+.etiqueta-expirada, .etiqueta-cancelada_con_reembolso, .etiqueta-cancelada_sin_reembolso { color: var(--concreto-medio); }
+.vacio a { color: var(--bronce-hondo); font-weight: 600; }
+@media (max-width: 800px) {
+  .filtros, .ficha-grilla { grid-template-columns: 1fr; }
+  .reserva { position: static; }
+  .galeria > img { max-height: 280px; }
+}
+.total { flex-wrap: wrap; }
+.aviso-reembolso { flex-basis: 100%; margin: .6rem 0 0; padding: .5rem .7rem; background: #f6ece2; border-left: 4px solid var(--bronce); font-size: .92rem; }
