@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ingresar · Pyra</title>
+  <link rel="icon" href="img/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/pyra.css">
+</head>
+<body>
+  <header class="encabezado">
+    <div class="contenedor">
+      <a class="marca" href="index.html"><img src="img/logo.svg" alt=""><span>Pyra</span></a>
+    </div>
+  </header>
+
+  <main>
+    <div class="caja">
+      <h1 id="titulo">Ingresar</h1>
+      <p id="bajada">Entrá con tu mail y tu contraseña.</p>
+      <div class="mensaje" id="mensaje" hidden role="alert"></div>
+
+      <form id="formulario" novalidate>
+        <div class="campo" id="campo-nombre" hidden>
+          <label for="nombre">Nombre y apellido</label>
+          <input id="nombre" name="nombre" autocomplete="name">
+        </div>
+        <div class="campo">
+          <label for="email">Mail</label>
+          <input id="email" name="email" type="email" autocomplete="email" required>
+        </div>
+        <div class="campo" id="campo-clave">
+          <label for="clave">Contraseña</label>
+          <input id="clave" name="clave" type="password" autocomplete="current-password" minlength="8" required>
+        </div>
+        <label class="casilla" id="campo-dueno" hidden>
+          <input id="dueno" type="checkbox">
+          <span>Quiero publicar espacios en Pyra</span>
+        </label>
+        <button class="boton boton-bronce ancho" id="enviar" type="submit">Ingresar</button>
+      </form>
+
+      <p class="alternar" id="alternar"></p>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1/dist/umd/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    const parametros = new URLSearchParams(location.search);
+    let modo = parametros.get("modo") || "ingreso"; // ingreso | registro | recuperar
+    const el = (id) => document.getElementById(id);
+    el("dueno").checked = parametros.get("dueno") === "1";
+
+    const textos = {
+      ingreso:   { titulo: "Ingresar", bajada: "Entrá con tu mail y tu contraseña.", boton: "Ingresar" },
+      registro:  { titulo: "Crear cuenta", bajada: "Con una sola cuenta podés reservar espacios y también publicar los tuyos.", boton: "Crear cuenta" },
+      recuperar: { titulo: "Recuperar contraseña", bajada: "Te enviamos un mail con un enlace para crear una contraseña nueva.", boton: "Enviar enlace" }
+    };
+
+    function pintar() {
+      const t = textos[modo];
+      el("titulo").textContent = t.titulo;
+      el("bajada").textContent = t.bajada;
+      el("enviar").textContent = t.boton;
+      el("campo-nombre").hidden = modo !== "registro";
+      el("campo-dueno").hidden = modo !== "registro";
+      el("campo-clave").hidden = modo === "recuperar";
+      el("clave").autocomplete = modo === "registro" ? "new-password" : "current-password";
+      mostrarMensaje(el("mensaje"), "");
+
+      const alt = el("alternar");
+      if (modo === "ingreso") {
+        alt.innerHTML = '¿No tenés cuenta? <button type="button" class="enlace" data-ir="registro">Creala acá</button><br>¿Olvidaste la contraseña? <button type="button" class="enlace" data-ir="recuperar">Recuperala</button>';
+      } else {
+        alt.innerHTML = '¿Ya tenés cuenta? <button type="button" class="enlace" data-ir="ingreso">Ingresá</button>';
+      }
+      alt.querySelectorAll("[data-ir]").forEach(b => b.addEventListener("click", () => { modo = b.dataset.ir; pintar(); }));
+    }
+
+    function validar(email, clave, nombre) {
+      if (!/^\S+@\S+\.\S+$/.test(email)) return "Escribí un mail válido, por ejemplo nombre@empresa.com.";
+      if (modo === "registro" && nombre.length < 3) return "Escribí tu nombre y apellido.";
+      if (modo !== "recuperar" && clave.length < 8) return "La contraseña tiene que tener al menos 8 caracteres.";
+      return "";
+    }
+
+    el("formulario").addEventListener("submit", async (evento) => {
+      evento.preventDefault();
+      const email = el("email").value.trim();
+      const clave = el("clave").value;
+      const nombre = el("nombre").value.trim();
+      const problema = validar(email, clave, nombre);
+      if (problema) return mostrarMensaje(el("mensaje"), problema);
+
+      const boton = el("enviar");
+      boton.disabled = true;
+      const volverAlPanel = new URL("panel.html", location.href).href;
+
+      try {
+        if (modo === "ingreso") {
+          const { error } = await db.auth.signInWithPassword({ email, password: clave });
+          if (error) throw error;
+          location.href = "panel.html";
+
+        } else if (modo === "registro") {
+          const { data, error } = await db.auth.signUp({
+            email, password: clave,
+            options: { data: { nombre, quiere_publicar: el("dueno").checked }, emailRedirectTo: volverAlPanel }
+          });
+          if (error) throw error;
+          if (data.session) { location.href = "panel.html"; return; }
+          el("formulario").hidden = true;
+          el("alternar").hidden = true;
+          mostrarMensaje(el("mensaje"), "Te enviamos un mail a " + email + ". Tocá el enlace para activar tu cuenta.", "ok");
+
+        } else {
+          const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: volverAlPanel });
+          if (error) throw error;
+          mostrarMensaje(el("mensaje"), "Si hay una cuenta con ese mail, te llega un enlace en unos minutos.", "ok");
+        }
+      } catch (error) {
+        mostrarMensaje(el("mensaje"), traducirError(error));
+      } finally {
+        boton.disabled = false;
+      }
+    });
+
+    pintar();
+  </script>
+</body>
+</html>

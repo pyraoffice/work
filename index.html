@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pyra · Oficinas y salas por hora en Salta</title>
+  <meta name="description" content="Reservá oficinas, salas de reunión y escritorios por hora en Salta. Pago online y confirmación al instante.">
+  <link rel="icon" href="img/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/pyra.css">
+</head>
+<body>
+  <header class="encabezado">
+    <div class="contenedor">
+      <a class="marca" href="index.html"><img src="img/logo.svg" alt=""><span>Pyra</span></a>
+      <nav class="nav" data-nav aria-label="Principal"></nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="portada">
+      <div class="contenedor">
+        <div>
+          <h1>Oficinas y salas de reunión por hora, en Salta.</h1>
+          <p>Reservá un espacio de trabajo por el tiempo que lo necesitás, desde 2 horas. Pagás online y la confirmación te llega al instante.</p>
+          <div class="acciones">
+            <a class="boton boton-bronce" href="#espacios">Ver tipos de espacio</a>
+            <a class="boton" href="ingresar.html?modo=registro&dueno=1">Publicar mi espacio</a>
+          </div>
+        </div>
+        <div class="isotipo-gigante" aria-hidden="true">
+          <svg viewBox="0 0 80 100">
+            <path fill="#37322E" fill-rule="evenodd" d="M0 0H48A31 31 0 0 1 48 62H24V100H0Z M24 18H46A13 13 0 0 1 46 44H24Z"/>
+            <polygon fill="#A8703A" points="27,40 41,40 34,26"/>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <section class="seccion" id="espacios">
+      <div class="contenedor">
+        <h2>Qué podés reservar</h2>
+        <dl class="tipos">
+          <div><dt>Oficina privada</dt><dd>Un espacio cerrado para trabajar con tu equipo o atender clientes con privacidad.</dd></div>
+          <div><dt>Escritorio en coworking</dt><dd>Un puesto individual dentro de un espacio compartido, con wifi y servicios incluidos.</dd></div>
+          <div><dt>Sala de reuniones</dt><dd>Para reuniones de equipo, entrevistas o presentaciones a clientes.</dd></div>
+          <div><dt>Salón corporativo</dt><dd>Para capacitaciones, workshops, lanzamientos o encuentros de empresa.</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="seccion funcionamiento">
+      <div class="contenedor">
+        <h2>Cómo funciona</h2>
+        <div class="columnas">
+          <div>
+            <h3>Si necesitás un espacio</h3>
+            <ol class="pasos">
+              <li>Elegí el espacio, el día y el horario, con al menos 24 horas de anticipación.</li>
+              <li>Pagá online con Mercado Pago.</li>
+              <li>Recibí la confirmación y la dirección por mail.</li>
+            </ol>
+          </div>
+          <div>
+            <h3>Si tenés un espacio libre</h3>
+            <ol class="pasos">
+              <li>Creá tu cuenta y publicá tu espacio con fotos, precio y horarios.</li>
+              <li>Recibí un aviso por mail con cada reserva confirmada.</li>
+              <li>Cobrá el 90% de cada reserva en una liquidación mensual.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="pie">
+    <div class="contenedor">Pyra, Salta, Argentina.</div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1/dist/umd/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

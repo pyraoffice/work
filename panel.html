@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mi panel · Pyra</title>
+  <link rel="icon" href="img/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/pyra.css">
+</head>
+<body>
+  <header class="encabezado">
+    <div class="contenedor">
+      <a class="marca" href="index.html"><img src="img/logo.svg" alt=""><span>Pyra</span></a>
+      <nav class="nav" data-nav aria-label="Principal"></nav>
+    </div>
+  </header>
+
+  <main class="contenedor panel">
+    <!-- Crear contraseña nueva (cuando se llega desde el mail de recuperación) -->
+    <div class="caja" id="recuperacion" hidden>
+      <h1>Contraseña nueva</h1>
+      <p>Elegí una contraseña de al menos 8 caracteres.</p>
+      <div class="mensaje" id="mensaje-clave" hidden role="alert"></div>
+      <form id="form-clave" novalidate>
+        <div class="campo">
+          <label for="clave-nueva">Contraseña nueva</label>
+          <input id="clave-nueva" type="password" autocomplete="new-password" minlength="8">
+        </div>
+        <button class="boton boton-bronce ancho" type="submit">Guardar contraseña</button>
+      </form>
+    </div>
+
+    <div id="contenido" hidden>
+      <h1 id="saludo">Hola</h1>
+      <div class="panel-grilla">
+        <section class="bloque">
+          <h2>Mis datos</h2>
+          <div class="mensaje" id="mensaje-datos" hidden role="status"></div>
+          <form id="form-datos" novalidate>
+            <div class="campo">
+              <label for="nombre">Nombre y apellido</label>
+              <input id="nombre" autocomplete="name">
+            </div>
+            <div class="campo">
+              <label for="telefono">Teléfono</label>
+              <input id="telefono" type="tel" autocomplete="tel" placeholder="387 555 1234">
+            </div>
+            <label class="casilla">
+              <input id="es-dueno" type="checkbox">
+              <span>Quiero publicar espacios en Pyra</span>
+            </label>
+            <button class="boton boton-bronce ancho" id="guardar" type="submit">Guardar datos</button>
+          </form>
+        </section>
+
+        <div>
+          <section class="bloque" id="bloque-espacios" hidden>
+            <h2>Mis espacios</h2>
+            <p class="vacio">Todavía no publicaste espacios. Pronto vas a poder cargar el primero desde acá.</p>
+          </section>
+          <section class="bloque">
+            <h2>Mis reservas</h2>
+            <p class="vacio">Todavía no tenés reservas.</p>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1/dist/umd/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    const el = (id) => document.getElementById(id);
+    const vieneDeRecuperacion = location.hash.includes("type=recovery");
+
+    db.auth.onAuthStateChange((evento) => {
+      if (evento === "PASSWORD_RECOVERY") mostrarRecuperacion();
+    });
+
+    function mostrarRecuperacion() {
+      el("contenido").hidden = true;
+      el("recuperacion").hidden = false;
+    }
+
+    el("form-clave").addEventListener("submit", async (evento) => {
+      evento.preventDefault();
+      const clave = el("clave-nueva").value;
+      if (clave.length < 8) return mostrarMensaje(el("mensaje-clave"), "La contraseña tiene que tener al menos 8 caracteres.");
+      const { error } = await db.auth.updateUser({ password: clave });
+      if (error) return mostrarMensaje(el("mensaje-clave"), traducirError(error));
+      el("recuperacion").hidden = true;
+      cargarPanel();
+    });
+
+    async function cargarPanel() {
+      const usuario = await usuarioActual();
+      if (!usuario) { location.href = "ingresar.html"; return; }
+
+      let { data: perfil, error } = await db.from("perfiles").select("*").eq("id", usuario.id).single();
+      if (error) { el("saludo").textContent = "No se pudieron cargar tus datos. Recargá la página."; el("contenido").hidden = false; return; }
+
+      // Si al registrarse marcó que quiere publicar, se activa una sola vez
+      if (usuario.user_metadata && usuario.user_metadata.quiere_publicar && !perfil.es_dueno) {
+        const r = await db.from("perfiles").update({ es_dueno: true }).eq("id", usuario.id).select().single();
+        if (!r.error) perfil = r.data;
+        await db.auth.updateUser({ data: { quiere_publicar: false } });
+      }
+
+      el("saludo").textContent = perfil.nombre ? "Hola, " + perfil.nombre.split(" ")[0] : "Hola";
+      el("nombre").value = perfil.nombre || "";
+      el("telefono").value = perfil.telefono || "";
+      el("es-dueno").checked = perfil.es_dueno;
+      el("bloque-espacios").hidden = !perfil.es_dueno;
+      el("contenido").hidden = false;
+    }
+
+    el("form-datos").addEventListener("submit", async (evento) => {
+      evento.preventDefault();
+      const nombre = el("nombre").value.trim();
+      if (nombre.length < 3) return mostrarMensaje(el("mensaje-datos"), "Escribí tu nombre y apellido.");
+      const boton = el("guardar");
+      boton.disabled = true;
+      const usuario = await usuarioActual();
+      const { error } = await db.from("perfiles").update({
+        nombre, telefono: el("telefono").value.trim() || null, es_dueno: el("es-dueno").checked
+      }).eq("id", usuario.id);
+      boton.disabled = false;
+      if (error) return mostrarMensaje(el("mensaje-datos"), traducirError(error));
+      mostrarMensaje(el("mensaje-datos"), "Datos guardados.", "ok");
+      el("bloque-espacios").hidden = !el("es-dueno").checked;
+      el("saludo").textContent = "Hola, " + nombre.split(" ")[0];
+    });
+
+    if (vieneDeRecuperacion) mostrarRecuperacion(); else cargarPanel();
+  </script>
+</body>
+</html>
