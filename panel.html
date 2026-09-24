@@ -108,8 +108,12 @@
       // Si al registrarse marcó que quiere publicar, se activa una sola vez
       if (usuario.user_metadata && usuario.user_metadata.quiere_publicar && !perfil.es_dueno) {
         const r = await db.from("perfiles").update({ es_dueno: true }).eq("id", usuario.id).select().single();
-        if (!r.error) perfil = r.data;
-        await db.auth.updateUser({ data: { quiere_publicar: false } });
+        if (r.error) {
+          console.error("No se pudo activar el perfil de dueño:", r.error);
+        } else {
+          perfil = r.data;
+          await db.auth.updateUser({ data: { quiere_publicar: false } });
+        }
       }
 
       el("saludo").textContent = perfil.nombre ? "Hola, " + perfil.nombre.split(" ")[0] : "Hola";
