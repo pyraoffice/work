@@ -17,7 +17,7 @@ async function pintarNav() {
       location.href = "index.html";
     });
   } else {
-    nav.innerHTML = '<a href="ingresar.html">Ingresar</a><a class="boton boton-bronce" href="ingresar.html?modo=registro&dueno=1">Publicar mi espacio</a>';
+    nav.innerHTML = '<a href="ingresar.html">Ingresar</a><a class="boton boton-bronce" href="ingresar.html?modo=registro">Crear cuenta</a>';
   }
 }
 
