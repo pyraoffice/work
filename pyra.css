@@ -1,11 +1,12 @@
 /* PYRA · Sistema visual "concreto y bronce" */
 :root {
-  --concreto-oscuro: #2B2724;
-  --concreto-medio: #5C5650;
-  --concreto-claro: #E4E1DC;
-  --concreto-papel: #EFEDEA;
-  --bronce: #A8703A;
-  --bronce-hondo: #7F4F24;
+  --concreto-oscuro: #171412;
+  --concreto-medio: #5E554D;
+  --concreto-claro: #E6DDD2;
+  --concreto-papel: #F0ECE6;
+  --crema: #E3D2BD;
+  --bronce: #C08A5B;
+  --bronce-hondo: #8A5A31;
   --error: #9A2F1F;
   --ok: #3F6B3A;
   --letra: "Archivo", "Helvetica Neue", Arial, sans-serif;
@@ -28,14 +29,13 @@ a { color: inherit; }
 .contenedor { width: min(1120px, 100% - 2.5rem); margin-inline: auto; }
 
 /* Encabezado */
-.encabezado { background: var(--concreto-oscuro); color: var(--concreto-claro); }
+.encabezado { background: var(--concreto-oscuro); color: var(--crema); }
 .encabezado .contenedor { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 72px; }
-.marca { display: flex; align-items: center; gap: .6rem; text-decoration: none; }
-.marca img { width: 28px; height: 35px; background: var(--concreto-claro); padding: 3px 4px; }
-.marca span { font-stretch: 118%; font-weight: 700; font-size: 1.35rem; letter-spacing: .02em; }
+.marca { display: flex; align-items: center; }
+.marca img { height: 30px; width: auto; display: block; }
 .nav { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; justify-content: flex-end; }
 .nav a:not(.boton) { text-decoration: none; }
-.nav a:not(.boton):hover, .enlace:hover { color: #fff; text-decoration: underline; }
+.nav a:not(.boton):hover, .enlace:hover { color: var(--bronce); text-decoration: underline; }
 
 /* Botones */
 .boton {
@@ -43,22 +43,22 @@ a { color: inherit; }
   color: inherit; font: inherit; font-weight: 600; padding: .6rem 1.1rem;
   text-decoration: none; cursor: pointer; border-radius: 2px;
 }
-.boton-bronce { background: var(--bronce); border-color: var(--bronce); color: #fff; }
-.boton-bronce:hover { background: var(--bronce-hondo); border-color: var(--bronce-hondo); }
+.boton-bronce { background: var(--bronce); border-color: var(--bronce); color: var(--concreto-oscuro); }
+.boton-bronce:hover { background: var(--crema); border-color: var(--crema); }
 .boton:disabled { opacity: .55; cursor: wait; }
 .enlace { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
 
 /* Portada */
-.portada { background: var(--concreto-oscuro); color: var(--concreto-claro); overflow: hidden; }
+.portada { background: var(--concreto-oscuro); color: var(--crema); overflow: hidden; }
 .portada .contenedor { display: grid; grid-template-columns: 1.3fr 1fr; align-items: end; gap: 2rem; padding-block: 4.5rem 0; }
 .portada h1 {
   font-stretch: 125%; font-weight: 800; line-height: 1.02;
-  font-size: clamp(2.4rem, 6vw, 4.6rem); margin: 0 0 1.5rem; color: #fff;
+  font-size: clamp(2.4rem, 6vw, 4.6rem); margin: 0 0 1.5rem; color: var(--crema);
 }
 .portada p { max-width: 34rem; font-size: 1.15rem; margin: 0 0 2rem; }
 .portada .acciones { display: flex; gap: 1rem; flex-wrap: wrap; padding-bottom: 4.5rem; }
 .isotipo-gigante { align-self: end; margin-bottom: -18%; }
-.isotipo-gigante svg { width: 100%; max-width: 420px; display: block; margin-left: auto; }
+.isotipo-gigante img { width: 100%; max-width: 400px; display: block; margin-left: auto; }
 
 /* Secciones */
 .seccion { padding-block: 4.5rem; }
@@ -75,7 +75,7 @@ a { color: inherit; }
 .pasos li { counter-increment: paso; display: grid; grid-template-columns: 2.4rem 1fr; padding: .8rem 0; border-top: 1px solid #c9c4bd; }
 .pasos li::before { content: counter(paso); font-weight: 800; font-stretch: 125%; color: var(--bronce-hondo); font-size: 1.3rem; line-height: 1.3; }
 
-.pie { background: var(--concreto-oscuro); color: var(--concreto-claro); padding-block: 2rem; font-size: .95rem; }
+.pie { background: var(--concreto-oscuro); color: var(--crema); padding-block: 2rem; font-size: .95rem; }
 
 /* Formularios y paneles */
 .caja { background: #fff; border: 1px solid #d3cec7; padding: 2rem; max-width: 30rem; margin: 3.5rem auto; }
