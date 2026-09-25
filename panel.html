@@ -152,10 +152,10 @@
       lista.innerHTML = data.map(r => `
         <article class="item-reserva">
           <h3><a href="ver.html?id=${r.espacio_id}">${textoSeguro(r.titulo)}</a></h3>
-          <p>${fechaLarga(r.inicio)}, de ${hora(r.inicio)} a ${hora(r.fin)} · ${pesos(r.monto_total)}</p>
+          <p>${fechaLarga(r.inicio)}, de ${hora(r.inicio)} a ${hora(r.fin)}. Total ${pesos(r.monto_total)}</p>
           <span class="etiqueta etiqueta-${r.estado}">${ESTADOS_RESERVA[r.estado] || r.estado}</span>
           ${r.direccion ? `<p class="detalle-confirmado">Dirección: ${textoSeguro(r.direccion)}, ${textoSeguro(r.ciudad)}<br>
-            Contacto: ${textoSeguro(r.dueno_nombre)}${r.dueno_telefono ? " · " + textoSeguro(r.dueno_telefono) : ""}</p>` : ""}
+            Contacto: ${textoSeguro(r.dueno_nombre)}${r.dueno_telefono ? ", " + textoSeguro(r.dueno_telefono) : ""}</p>` : ""}
         </article>`).join("");
     }
 
@@ -166,9 +166,9 @@
       el("lista-recibidas").innerHTML = data.map(r => `
         <article class="item-reserva">
           <h3>${textoSeguro(r.titulo)}</h3>
-          <p>${fechaLarga(r.inicio)}, de ${hora(r.inicio)} a ${hora(r.fin)} · Recibís ${pesos(r.monto_dueno)}</p>
+          <p>${fechaLarga(r.inicio)}, de ${hora(r.inicio)} a ${hora(r.fin)}. Recibís ${pesos(r.monto_dueno)}</p>
           <span class="etiqueta etiqueta-${r.estado}">${ESTADOS_RESERVA[r.estado] || r.estado}</span>
-          ${r.cliente_nombre ? `<p class="detalle-confirmado">Cliente: ${textoSeguro(r.cliente_nombre)}${r.cliente_telefono ? " · " + textoSeguro(r.cliente_telefono) : ""}</p>` : ""}
+          ${r.cliente_nombre ? `<p class="detalle-confirmado">Cliente: ${textoSeguro(r.cliente_nombre)}${r.cliente_telefono ? ", " + textoSeguro(r.cliente_telefono) : ""}</p>` : ""}
         </article>`).join("");
     }
 
@@ -190,7 +190,7 @@
           ${img}
           <div>
             <h3>${titulo.innerHTML}</h3>
-            <p>${e.tipos_espacio ? e.tipos_espacio.nombre : ""} · $${Number(e.precio_hora).toLocaleString("es-AR")} por hora</p>
+            <p>${e.tipos_espacio ? e.tipos_espacio.nombre : ""}, $${Number(e.precio_hora).toLocaleString("es-AR")} por hora</p>
             <span class="etiqueta etiqueta-${e.estado}">${nombresEstado[e.estado] || e.estado}</span>
           </div>
           <a class="boton" href="espacio.html?id=${e.id}">Editar</a>

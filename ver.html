@@ -256,7 +256,7 @@
       disponibilidad = disp.data || [];
       document.title = espacio.titulo + " · Pyra";
 
-      el("tipo").textContent = espacio.tipo_nombre + " · hasta " + espacio.capacidad + " personas";
+      el("tipo").textContent = espacio.tipo_nombre + (espacio.capacidad == 1 ? " para 1 persona" : " para hasta " + espacio.capacidad + " personas");
       el("titulo").textContent = espacio.titulo;
       el("descripcion").textContent = espacio.descripcion || "";
       el("ubicacion").textContent = espacio.ciudad + ", " + espacio.provincia +
@@ -279,12 +279,13 @@
       const listaFotos = (fotos.data || []).map(f => urlFoto(f.ruta));
       if (listaFotos.length) {
         el("foto-principal").src = listaFotos[0];
-        el("miniaturas").innerHTML = listaFotos.length > 1 ? listaFotos.map((u, i) =>
-          `<button type="button" data-foto="${i}" aria-label="Ver foto ${i + 1}"><img src="${u}" alt=""></button>`).join("") : "";
+        el("miniaturas").innerHTML = listaFotos.length > 1 ? listaFotos.slice(1).map((u, i) =>
+          `<button type="button" data-foto="${i + 1}" aria-label="Ver foto ${i + 2}"><img src="${u}" alt=""></button>`).join("") : "";
         el("miniaturas").querySelectorAll("[data-foto]").forEach(b =>
           b.addEventListener("click", () => { el("foto-principal").src = listaFotos[+b.dataset.foto]; }));
+        if (listaFotos.length === 1) document.querySelector(".galeria").classList.add("una-foto");
       } else {
-        el("foto-principal").hidden = true;
+        document.querySelector(".galeria").hidden = true;
       }
 
       el("fecha").min = hoyLocal(0);

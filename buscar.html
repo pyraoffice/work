@@ -69,6 +69,7 @@
       const { data } = await db.from("tipos_espacio").select("id, nombre").order("nombre");
       (data || []).forEach(t => el("f-tipo").insertAdjacentHTML("beforeend", `<option value="${t.id}">${textoSeguro(t.nombre)}</option>`));
       if (parametros.get("tipo")) el("f-tipo").value = parametros.get("tipo");
+      if (parametros.get("capacidad")) el("f-capacidad").value = parametros.get("capacidad");
     }
 
     async function buscar() {
@@ -91,16 +92,7 @@
         el("resultados").innerHTML = '<p class="vacio">No hay espacios con esos filtros. Probá con otro tipo o menos personas.</p>';
         return;
       }
-      el("resultados").innerHTML = data.map(e => `
-        <a class="tarjeta" href="ver.html?id=${e.id}">
-          ${e.portada ? `<img src="${urlFoto(e.portada)}" alt="" loading="lazy">` : '<div class="sin-foto">Sin foto</div>'}
-          <div class="tarjeta-texto">
-            <p class="tarjeta-tipo">${textoSeguro(e.tipo_nombre)} · hasta ${e.capacidad} personas</p>
-            <h2>${textoSeguro(e.titulo)}</h2>
-            <p>${textoSeguro(e.ciudad)}${e.cantidad_resenas > 0 ? ` · ${e.puntaje} de 5 (${e.cantidad_resenas})` : ""}</p>
-            <p class="tarjeta-precio"><strong>${pesos(e.precio_hora)}</strong> por hora</p>
-          </div>
-        </a>`).join("");
+      el("resultados").innerHTML = data.map(tarjetaEspacio).join("");
     }
 
     ["f-tipo", "f-capacidad", "f-orden"].forEach(id => el(id).addEventListener("change", buscar));

@@ -61,4 +61,19 @@ function textoSeguro(t) {
   return s.innerHTML;
 }
 
+function tarjetaEspacio(e) {
+  const opiniones = e.cantidad_resenas > 0
+    ? `, ${String(e.puntaje).replace(".", ",")} de 5 (${e.cantidad_resenas} ${e.cantidad_resenas == 1 ? "opinión" : "opiniones"})` : "";
+  return `
+    <a class="tarjeta" href="ver.html?id=${e.id}">
+      ${e.portada ? `<img src="${urlFoto(e.portada)}" alt="" loading="lazy">` : '<div class="sin-foto">Sin foto</div>'}
+      <div class="tarjeta-texto">
+        <p class="tarjeta-tipo">${textoSeguro(e.tipo_nombre)}, ${e.capacidad == 1 ? "1 persona" : "hasta " + e.capacidad + " personas"}</p>
+        <h2>${textoSeguro(e.titulo)}</h2>
+        <p>${textoSeguro(e.ciudad)}${opiniones}</p>
+        <p class="tarjeta-precio"><strong>${pesos(e.precio_hora)}</strong> por hora</p>
+      </div>
+    </a>`;
+}
+
 document.addEventListener("DOMContentLoaded", pintarNav);
