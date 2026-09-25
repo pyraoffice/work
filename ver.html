@@ -78,7 +78,8 @@
             </div>
             <p class="ayuda" id="ocupados"></p>
             <div class="total" id="total" hidden></div>
-            <button class="boton boton-bronce ancho" id="reservar" type="button" disabled>Reservar</button>
+            <button class="boton boton-bronce ancho" id="reservar" type="button" disabled>Reservar y pagar</button>
+            <p class="ayuda nota-pago">Vas a pagar en Mercado Pago. La reserva se confirma al aprobarse el pago.</p>
           </div>
 
           <div id="reserva-hecha" hidden>
@@ -225,20 +226,25 @@
       const inicio = new Date(el("inicio").value);
       const fin = new Date(inicio.getTime() + parseFloat(el("duracion").value) * 3600000);
       el("reservar").disabled = true;
-      const { error } = await db.rpc("crear_reserva", {
+      el("reservar").textContent = "Preparando el pago...";
+      const { data: reservaId, error } = await db.rpc("crear_reserva", {
         p_espacio: espacioId, p_inicio: inicio.toISOString(), p_fin: fin.toISOString()
       });
       if (error) {
         mostrarMensaje(el("mensaje"), traducirError(error));
         el("reservar").disabled = false;
+        el("reservar").textContent = "Reservar y pagar";
         elegirDia();
         return;
       }
-      el("formulario-reserva").hidden = true;
-      el("texto-reserva-hecha").textContent =
-        "Tu horario quedó retenido: " + fechaLarga(inicio) + ", de " + hora(inicio) + " a " + hora(fin) +
-        ". Para confirmarlo hay que completar el pago en los próximos 15 minutos.";
-      el("reserva-hecha").hidden = false;
+      const problema = await irAPagar(reservaId);
+      if (problema) {
+        el("formulario-reserva").hidden = true;
+        el("texto-reserva-hecha").textContent =
+          "Tu horario quedó retenido: " + fechaLarga(inicio) + ", de " + hora(inicio) + " a " + hora(fin) +
+          ". " + problema + " Podés reintentar el pago desde tu panel en los próximos 30 minutos.";
+        el("reserva-hecha").hidden = false;
+      }
     }
 
     async function iniciar() {

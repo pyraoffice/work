@@ -73,6 +73,7 @@
           </section>
           <section class="bloque">
             <h2>Mis reservas</h2>
+            <div class="mensaje" id="mensaje-pago" hidden role="status"></div>
             <div id="lista-reservas"><p class="vacio">Cargando...</p></div>
           </section>
         </div>
@@ -132,6 +133,7 @@
       el("contenido").hidden = false;
       if (perfil.es_dueno) { cargarEspacios(usuario.id); cargarRecibidas(); }
       cargarReservas();
+      avisoDePago();
 
       const guardado = new URLSearchParams(location.search).get("guardado");
       if (guardado) mostrarMensaje(el("mensaje-espacios"),
@@ -154,9 +156,26 @@
           <h3><a href="ver.html?id=${r.espacio_id}">${textoSeguro(r.titulo)}</a></h3>
           <p>${fechaLarga(r.inicio)}, de ${hora(r.inicio)} a ${hora(r.fin)}. Total ${pesos(r.monto_total)}</p>
           <span class="etiqueta etiqueta-${r.estado}">${ESTADOS_RESERVA[r.estado] || r.estado}</span>
+          ${r.estado === "pendiente_pago" ? `<button type="button" class="boton boton-bronce boton-chico" data-pagar="${r.id}">Pagar ahora</button>` : ""}
           ${r.direccion ? `<p class="detalle-confirmado">Dirección: ${textoSeguro(r.direccion)}, ${textoSeguro(r.ciudad)}<br>
             Contacto: ${textoSeguro(r.dueno_nombre)}${r.dueno_telefono ? ", " + textoSeguro(r.dueno_telefono) : ""}</p>` : ""}
         </article>`).join("");
+      lista.querySelectorAll("[data-pagar]").forEach(b => b.addEventListener("click", async () => {
+        b.disabled = true; b.textContent = "Abriendo Mercado Pago...";
+        const problema = await irAPagar(b.dataset.pagar);
+        if (problema) { mostrarMensaje(el("mensaje-pago"), problema); b.disabled = false; b.textContent = "Pagar ahora"; }
+      }));
+    }
+
+    function avisoDePago() {
+      const pago = new URLSearchParams(location.search).get("pago");
+      const textos = {
+        aprobado: ["Pago aprobado. Tu reserva se confirma en unos segundos; si todavía dice \"Esperando pago\", recargá la página.", "ok"],
+        pendiente: ["Tu pago quedó pendiente de aprobación. Cuando Mercado Pago lo apruebe, la reserva se confirma sola.", "ok"],
+        rechazado: ["El pago no se completó. Podés intentar de nuevo con \"Pagar ahora\" antes de que venza la reserva.", "error"]
+      };
+      if (textos[pago]) mostrarMensaje(el("mensaje-pago"), textos[pago][0], textos[pago][1]);
+      if (pago === "aprobado") setTimeout(cargarReservas, 4000);
     }
 
     async function cargarRecibidas() {

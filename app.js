@@ -61,6 +61,18 @@ function textoSeguro(t) {
   return s.innerHTML;
 }
 
+// Pide a Supabase el enlace de pago y lleva al cliente a Mercado Pago.
+// Si algo falla, devuelve el texto del error para mostrarlo.
+async function irAPagar(reservaId) {
+  const { data, error } = await db.functions.invoke("crear-pago", { body: { reserva_id: reservaId } });
+  if (error) {
+    try { const cuerpo = await error.context.json(); return cuerpo.error || traducirError(error); }
+    catch (_) { return traducirError(error); }
+  }
+  if (data && data.url) { location.href = data.url; return ""; }
+  return "No se pudo iniciar el pago. Probá de nuevo.";
+}
+
 function tarjetaEspacio(e) {
   const opiniones = e.cantidad_resenas > 0
     ? `, ${String(e.puntaje).replace(".", ",")} de 5 (${e.cantidad_resenas} ${e.cantidad_resenas == 1 ? "opinión" : "opiniones"})` : "";
